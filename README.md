@@ -53,7 +53,7 @@ Then animates each step visually with 2-second delays.
 
 ## 📸 Screenshot
 
-![Demo Screenshot](screenshot.png) <!-- Optional: Add an image file -->
+![image](https://github.com/user-attachments/assets/e5e10df0-a598-4331-b23d-d7bb815c2eaa)
 
 ---
 
