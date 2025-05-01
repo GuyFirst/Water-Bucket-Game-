@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bucket Game Solver</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Bucket Game Solver</h1>
+
+  <div class="form">
+    <label for="largeBucket">Large Bucket Size (N):</label>
+    <input type="number" id="largeBucket" value="5" />
+
+    <label for="smallBucket">Small Bucket Size (M):</label>
+    <input type="number" id="smallBucket" value="3" />
+
+    <label for="target">Target Amount (X):</label>
+    <input type="number" id="target" value="4" />
+
+    <button onclick="solve()">Solve Puzzle</button>
+    <div id="error" style="color:red;margin-top:10px;"></div>
+  </div>
+
+  <div class="buckets">
+    <div class="bucket-container">
+      <div class="label">Large Bucket</div>
+      <div class="bucket">
+        <div class="water" id="largeBucketWater"></div>
+        <div class="amount" id="largeBucketAmount">0</div>
+      </div>
+    </div>
+    <div class="bucket-container">
+      <div class="label">Small Bucket</div>
+      <div class="bucket small-bucket">
+        <div class="water" id="smallBucketWater"></div>
+        <div class="amount" id="smallBucketAmount">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+  <script>
+    function gcd(a, b) {   //find the Greatest Common Divisor
+      while (b) [a, b] = [b, a % b];
+      return a;
+    }
+
+    function solve() {
+      const largeBucketSize = parseInt(document.getElementById('largeBucket').value);
+      const smallBucketSize = parseInt(document.getElementById('smallBucket').value);
+      const targetAmount = parseInt(document.getElementById('target').value);
+      const errorBox = document.getElementById('error');
+      const stepsBox = document.getElementById('steps');
+      errorBox.innerText = '';
+      stepsBox.innerHTML = '';
+
+      if (largeBucketSize <= 0 || smallBucketSize <= 0 || targetAmount <= 0) {
+        errorBox.innerText = 'All values must be positive numbers.';
+        return;
+      }
+
+      if (largeBucketSize < smallBucketSize) {
+        errorBox.innerText = 'The large bucket should be larger than the small one.';
+        return;
+      }
+
+      if (targetAmount > largeBucketSize) {
+        errorBox.innerText = 'Target amount cannot be greater than the large bucket size.';
+        return;
+      }
+
+      if (targetAmount % gcd(largeBucketSize, smallBucketSize) !== 0) {
+        errorBox.innerText = 'Target amount is not achievable with the given bucket sizes.';
+        return;
+      }
+
+      const queue = [];
+      const visited = new Set();
+      const parent = new Map();
+      const actions = new Map();
+      const initialState = [0, 0];
+      queue.push(initialState);
+      visited.add(initialState.toString());
+      let found = false;
+      let finalState = '';
+
+      const tryAddState = (newState, oldState, action) => {
+        const key = newState.toString();
+        if (!visited.has(key)) {
+          visited.add(key);
+          queue.push(newState);
+          parent.set(key, oldState.toString());
+          actions.set(key, action);
+        }
+      };
+
+      while (queue.length && !found) {
+        const [large, small] = queue.shift();
+
+        if (large === targetAmount || small === targetAmount) {
+          found = true;
+          finalState = [large, small].toString();
+          break;
+        }
+
+        tryAddState([largeBucketSize, small], [large, small], 'fill large bucket');
+        tryAddState([large, smallBucketSize], [large, small], 'fill small bucket');
+        tryAddState([0, small], [large, small], 'empty large bucket');
+        tryAddState([large, 0], [large, small], 'empty small bucket');
+
+        const pourLargeToSmall = Math.min(large, smallBucketSize - small);
+        tryAddState([large - pourLargeToSmall, small + pourLargeToSmall], [large, small], 'pour from large to small bucket');
+
+        const pourSmallToLarge = Math.min(small, largeBucketSize - large);
+        tryAddState([large + pourSmallToLarge, small - pourSmallToLarge], [large, small], 'pour from small to large bucket');
+      }
+
+      if (!found) {
+        errorBox.innerText = 'No solution found.';
+        return;
+      }
+
+      const path = [];
+      let current = finalState;
+      while (parent.has(current)) {
+        const [large, small] = current.split(',').map(Number);
+        path.unshift({ large, small, action: actions.get(current) });
+        current = parent.get(current);
+      }
+      path.unshift({ large: 0, small: 0, action: 'start' });
+
+      let index = 0;
+
+      function showStep() {
+        if (index >= path.length) return;
+        const step = path[index];
+        const div = document.createElement('div');
+        div.className = 'step';
+        div.innerText = `Step ${index}: ${step.action} → [${step.large}, ${step.small}]`;
+        stepsBox.appendChild(div);
+
+        const largeWater = document.getElementById('largeBucketWater');
+        const smallWater = document.getElementById('smallBucketWater');
+        const largeAmount = document.getElementById('largeBucketAmount');
+        const smallAmount = document.getElementById('smallBucketAmount');
+
+        largeWater.style.height = `${(step.large / largeBucketSize) * 100}%`;
+        smallWater.style.height = `${(step.small / smallBucketSize) * 100}%`;
+
+        largeAmount.textContent = `${step.large} / ${largeBucketSize}`;
+        smallAmount.textContent = `${step.small} / ${smallBucketSize}`;
+
+        index++;
+        setTimeout(showStep, 2000);
+      }
+
+      showStep();
+    }
+  </script>
+</body>
+</html>
